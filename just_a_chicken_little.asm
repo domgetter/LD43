@@ -93,52 +93,62 @@ LoadLevel1:
 .scope
   row = $00
   row_offset = $01
+  dictionary = $02
   LDX #$00
   STX row
 @row:
   LDX #$00
   STX row_offset
+  LDA #<tile_dictionary_0
+  STA dictionary
+  LDA #>tile_dictionary_0
+  STA dictionary+1
+  LDA #$00
 @row_top:
   CLC
   ADC row
   TAX
   LDA level1, X
   ASL
-  TAX
-  LDA tile_dictionary_0, X
+  TAY
+  LDA (dictionary), Y
   STA PPU_DATA
-  INX
-  LDA tile_dictionary_0, X
+  INY
+  LDA (dictionary), Y
   STA PPU_DATA
   INC row_offset
   LDA row_offset
-  CMP #$10
+  CMP level1_width
   BNE @row_top
   
   LDX #$00
   STX row_offset
+  LDA #<tile_dictionary_1
+  STA dictionary
+  LDA #>tile_dictionary_1
+  STA dictionary+1
+  LDA row_offset
 @row_bottom:
   CLC
   ADC row
   TAX
   LDA level1, X
   ASL
-  TAX
-  LDA tile_dictionary_1, X
+  TAY
+  LDA (dictionary), Y
   STA PPU_DATA
-  INX
-  LDA tile_dictionary_1, X
+  INY
+  LDA (dictionary), Y
   STA PPU_DATA
   INC row_offset
   LDA row_offset
-  CMP #$10
+  CMP level1_width
   BNE @row_bottom
 
   LDA row
   CLC
-  ADC #$10
-  STA $00
-  CMP #$D0
+  ADC level1_width
+  STA row
   BNE @row
 
 .endscope
