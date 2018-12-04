@@ -1,81 +1,83 @@
 ChangeTheWorld:
 
   JSR UpdateChickenBasedOnControllerInput
+  
   RTS
 
-;; To move right, we potentially move right,
-;; see if there's a collision, and if so,
-;; we don't move right
-MoveChickenRight:
-  LDA chicken+Chicken::xcoord
-  PHA
-  CLC
-  ADC #1
-  STA chicken+Chicken::xcoord
-  PHA
-  JSR CheckCollision
-  PLA
-  BEQ @noCollision
-  PLA
-  STA chicken+Chicken::xcoord
-  JMP @collision
-@noCollision:
-  PLA
-@collision:
+;; Overall pipeline
+;; 1. Get controller input
+;; 2. collision detection to set movement and direction flags
+;; 3. update chicken state
+;; 4. change chicken sprites
+;; 5. (next vblank) copy chicken sprites over
+;; Set flags for actual update to occur later
+;; Previously, I complected the chicken state update
+;; with collision detection
+CheckRight:
+  ;; Can I go to the right?
+  ;; Am I already going to the right?
+  ;; Is there something in the way?
+
+  ;; If I'm moving, then stop doing work
+  LDA chicken+Chicken::moving
+  BNE @doneCheckingRight
+
+  ;; If there's something in the way,
+  ;; then don't try to go that way
+  ;; Given the chicken's grid coordinates
+  ;; see what block type is to the right
+  ;; and act accordingly
+
+  LDA #$00
+  BEQ @doneCheckingRight
+
+  LDA Directions::RIGHT
+  STA chicken+Chicken::direction
+  INC chicken+Chicken::grid_xcoord_end
+
+@doneCheckingRight:
   RTS
 
-MoveChickenLeft:
-  LDA chicken+Chicken::xcoord
-  PHA
-  SEC
-  SBC #1
-  STA chicken+Chicken::xcoord
-  PHA
-  JSR CheckCollision
-  PLA
-  BEQ @noCollision
-  PLA
-  STA chicken+Chicken::xcoord
-  JMP @collision
-@noCollision:
-  PLA
-@collision:
+CheckLeft:
+  LDA chicken+Chicken::moving
+  BNE @doneCheckingLeft
+
+  LDA #$00
+  BEQ @doneCheckingLeft
+
+  LDA Directions::LEFT
+  STA chicken+Chicken::direction
+  DEC chicken+Chicken::grid_xcoord_end
+
+@doneCheckingLeft:
   RTS
 
-MoveChickenUp:
-  LDA chicken+Chicken::ycoord
-  PHA
-  SEC
-  SBC #1
-  STA chicken+Chicken::ycoord
-  PHA
-  JSR CheckCollision
-  PLA
-  BEQ @noCollision
-  PLA
-  STA chicken+Chicken::ycoord
-  JMP @collision
-@noCollision:
-  PLA
-@collision:
+CheckUp:
+  LDA chicken+Chicken::moving
+  BNE @doneCheckingUp
+
+  LDA #$00
+  BEQ @doneCheckingUp
+
+  LDA Directions::UP
+  STA chicken+Chicken::direction
+  DEC chicken+Chicken::grid_ycoord_end
+
+@doneCheckingUp:
   RTS
 
-MoveChickenDown:
-  LDA chicken+Chicken::ycoord
-  PHA
-  CLC
-  ADC #1
-  STA chicken+Chicken::ycoord
-  PHA
-  JSR CheckCollision
-  PLA
-  BEQ @noCollision
-  PLA
-  STA chicken+Chicken::ycoord
-  JMP @collision
-@noCollision:
-  PLA
-@collision:
+CheckDown:
+  LDA chicken+Chicken::moving
+  BNE @doneCheckingDown
+
+  LDA #$00
+  BEQ @doneCheckingDown
+
+  LDA Directions::DOWN
+  STA chicken+Chicken::direction
+  INC chicken+Chicken::grid_ycoord_end
+
+@doneCheckingDown:
   RTS
 
 ;; Select which update functions are called
@@ -86,30 +88,28 @@ MoveChickenDown:
 
 UpdateChickenBasedOnControllerInput:
   LDA right_pressed
-  CMP #1
-  BNE @noRight
-  JSR MoveChickenRight
-  JMP @noLeft
+  BEQ @noRight
+  JSR CheckRight
+  JMP @noOthers
 @noRight:
 
   LDA left_pressed
-  CMP #1
-  BNE @noLeft
-  JSR MoveChickenLeft
+  BEQ @noLeft
+  JSR CheckLeft
+  JMP @noOthers
 @noLeft:
 
   LDA up_pressed
-  CMP #1
-  BNE @noUp
-  JSR MoveChickenUp
-  JMP @noDown
+  BEQ @noUp
+  JSR CheckUp
+  JMP @noOthers
 @noUp:
 
   LDA down_pressed
-  CMP #1
-  BNE @noDown
-  JSR MoveChickenDown
+  BEQ @noDown
+  JSR CheckDown
 @noDown:
+@noOthers:
   RTS
 
 ;; Check if the current chicken position is colliding with

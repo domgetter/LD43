@@ -26,9 +26,12 @@ RESET:
   BPL @vblankwait
 
   LDA PPU_STATUS
+  LDX #Background_Pattern_Table_1
+  STX PPU_CTRL
   LDA #$00
-  STA PPU_CTRL
   STA PPU_MASK
+
+  
 
 ;; Load initial pallete from ROM into PPU RAM
 InitializePalette:
@@ -85,40 +88,90 @@ InitializeSprites:
   STA chick_sprite+Sprite::attrs
 
 LoadLevel1:
-  set_PPU_ADDR PPU_Nametable_1
+  set_PPU_ADDR PPU_Nametable_0
 
+.scope
+  row = $00
+  row_offset = $01
   LDX #$00
-@loadBackground1:
+  STX row
+@row:
+  LDX #$00
+  STX row_offset
+@row_top:
+  CLC
+  ADC row
+  TAX
   LDA level1, X
+  ASL
+  TAX
+  LDA tile_dictionary_0, X
   STA PPU_DATA
   INX
-  BNE @loadBackground1
+  LDA tile_dictionary_0, X
+  STA PPU_DATA
+  INC row_offset
+  LDA row_offset
+  CMP #$10
+  BNE @row_top
+  
+  LDX #$00
+  STX row_offset
+@row_bottom:
+  CLC
+  ADC row
+  TAX
+  LDA level1, X
+  ASL
+  TAX
+  LDA tile_dictionary_1, X
+  STA PPU_DATA
+  INX
+  LDA tile_dictionary_1, X
+  STA PPU_DATA
+  INC row_offset
+  LDA row_offset
+  CMP #$10
+  BNE @row_bottom
 
-@loadBackground2:
-  LDA level1+$0100, X
-  STA PPU_DATA
-  INX
-  BNE @loadBackground2
+  LDA row
+  CLC
+  ADC #$10
+  STA $00
+  CMP #$D0
+  BNE @row
 
-@loadBackground3:
-  LDA level1+$0200, X
-  STA PPU_DATA
-  INX
-  BNE @loadBackground3
+.endscope
 
-@loadBackground4:
-  LDA level1+$0300, X
-  STA PPU_DATA
-  INX
-  CPX #$C0
-  BNE @loadBackground4
+;  LDX #$00
+;@loadBackground1:
+;  LDA level1, X
+;  STA PPU_DATA
+;  INX
+;  BNE @loadBackground1
+;
+;@loadBackground2:
+;  LDA level1+$0100, X
+;  STA PPU_DATA
+;  INX
+;  BNE @loadBackground2
+;
+;@loadBackground3:
+;  LDA level1+$0200, X
+;  STA PPU_DATA
+;  INX
+;  BNE @loadBackground3
+;
+;@loadBackground4:
+;  LDA level1+$0300, X
+;  STA PPU_DATA
+;  INX
+;  CPX #$C0
+;  BNE @loadBackground4
 
 LoadAttributes:
-  set_PPU_ADDR PPU_Attribute_Table_1
+  set_PPU_ADDR PPU_Attribute_Table_0
 
-;; for(int i = 0; i < 64; i++) {
-;;   ppu_ram = level1_attr[i]
-;; }
   LDX #$00
 @loadAttributesLoop:
   LDA level1_attr, X
@@ -127,7 +180,7 @@ LoadAttributes:
   CPX #$40
   BNE @loadAttributesLoop
 
-  LDX #(Enable_NMI | Background_Pattern_Table_1)
+  LDX #(Enable_NMI | Sprite_Pattern_Table_0 | Background_Pattern_Table_1)
   STX PPU_CTRL
 
   LDA #(Show_Background | Show_Sprites)
@@ -136,6 +189,18 @@ LoadAttributes:
   LDA #50
   STA chicken+Chicken::xcoord
   STA chicken+Chicken::ycoord
+
+  LDA level1_chicken_init_x
+  STA chicken+Chicken::grid_xcoord
+  STA chicken+Chicken::grid_xcoord_start
+  STA chicken+Chicken::grid_xcoord_end
+  LDA level1_chicken_init_y
+  STA chicken+Chicken::grid_ycoord
+  STA chicken+Chicken::grid_ycoord_start
+  STA chicken+Chicken::grid_ycoord_end
+
+  LDA #$01
+  STA chicken+Chicken::moving
 
   LDA #120
   STA egg+Egg::xcoord
@@ -147,6 +212,7 @@ LoadAttributes:
   LDA #150
   STA chick+Chick::ycoord
 
+  ;;JSR UpdateChicken
   JSR UpdateChickenSprites
   JSR UpdateEggSprite
   JSR UpdateChickSprite
@@ -224,7 +290,6 @@ right_pressed: .res 1
 chicken: .tag Chicken
 egg: .tag Egg
 chick: .tag Chick
-
 
 .segment "VECTORS"
   .word DoOnVBlank
