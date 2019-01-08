@@ -20,16 +20,6 @@ RESET:
   LDA #$00
   STA APU_DMC
 
-;; Wait for the first vblank to synchronize with the TV
-@vblankwait:
-  BIT PPU_STATUS
-  BPL @vblankwait
-
-  LDA PPU_STATUS
-  LDX #Background_Pattern_Table_1
-  STX PPU_CTRL
-  LDA #$00
-  STA PPU_MASK
 
   
 
@@ -90,6 +80,14 @@ InitializeSprites:
 LoadLevel1:
   set_PPU_ADDR PPU_Nametable_0
 
+  STA egg_sprite+Sprite::attrs
+
+  LDA #Sprite_Palette_1
+  STA chick_sprite+Sprite::attrs
+
+LoadLevel1:
+  set_PPU_ADDR PPU_Nametable_0
+
 .scope
   row = $00
   row_init = $00
@@ -123,11 +121,6 @@ LoadLevel1:
   TAY
   LDA (level), Y
   ASL
-  TAY
-  LDA (dictionary), Y
-  STA PPU_DATA
-  INY
-  LDA (dictionary), Y
   STA PPU_DATA
   INC row_offset
   LDA row_offset
@@ -156,14 +149,22 @@ LoadLevel1:
   INC row_offset
   LDA row_offset
   CMP level_width
-  BNE @row_bottom
+  STA egg_sprite+Sprite::attrs
 
-  LDA row
-  CLC
-  ADC level_width
-  STA row
-  CMP #$F0
-  BNE @row
+  LDA #Sprite_Palette_1
+  STA chick_sprite+Sprite::attrs
+
+LoadLevel1:
+  set_PPU_ADDR PPU_Nametable_0
+
+  STA egg_sprite+Sprite::attrs
+
+  LDA #Sprite_Palette_1
+  STA chick_sprite+Sprite::attrs
+
+LoadLevel1:
+  set_PPU_ADDR PPU_Nametable_0
+
 
 .endscope
 
@@ -190,14 +191,6 @@ LoadAttributes:
 
   LDA level1_chicken_init_x
   STA chicken+Chicken::grid_xcoord
-  STA chicken+Chicken::grid_xcoord_start
-  STA chicken+Chicken::grid_xcoord_end
-  LDA level1_chicken_init_y
-  STA chicken+Chicken::grid_ycoord
-  STA chicken+Chicken::grid_ycoord_start
-  STA chicken+Chicken::grid_ycoord_end
-
-  LDA #$01
   STA chicken+Chicken::moving
 
   LDA #120
@@ -236,27 +229,6 @@ SpriteDMA:
 SetScroll:
   LDA #$00
   STA PPU_SCROLL
-  STA PPU_SCROLL
-  RTS
-
-;; Run per-frame code.
-;; Pipe over Sprites
-;; Move over any new tile info
-;; Collect user input
-;; Update world
-DoOnVBlank:
-  JSR SpriteDMA
-  JSR SetScroll
-  JSR ReadPlayer1Controller
-  JSR ChangeTheWorld
-  JSR UpdateChickenSprites
-  JSR UpdateEggSprite
-  RTI
-
-.include "initialPalette.asm"
-.include "level1.asm"
-.include "readPlayer1Controller.asm"
-.include "changeTheWorld.asm"
 .include "updateChickenSprites.asm"
 .include "updateEggSprite.asm"
 .include "updateChickSprite.asm"
